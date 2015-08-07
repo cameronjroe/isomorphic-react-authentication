@@ -4,6 +4,11 @@ import favicon      from 'serve-favicon';
 import logger       from 'morgan';
 import cookieParser from 'cookie-parser';
 import bodyParser   from 'body-parser';
+import React from 'react';
+import Router from 'react-router';
+import routes from './app/routes';
+import alt from './app/alt';
+import Iso from 'iso';
 
 import routes from './routes/index';
 import users from './routes/users';
@@ -23,8 +28,29 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/', routes);
-app.use('/users', users);
+// app.use('/', routes);
+// app.use('/users', users);
+
+app.use(function(req, res) {
+  alt.bootstrap(JSON.stringify(res.locals || {}));
+
+  var iso = new Iso();
+
+  const router = Router.create({
+    routes: routes,
+    location: req.url,
+    onAbort: (redirect) => {
+      return res.redirect('/login');
+    }
+  });
+
+  router.run(function (Handler, state) {
+    var html = React.renderToString(React.createElement(Handler));
+    iso.add(html, alt.flush());
+
+    res.render('index', {html: iso.render()});
+  });
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
